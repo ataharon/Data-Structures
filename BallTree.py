@@ -18,16 +18,16 @@ def distance(p1, p2):
     
     return math.sqrt(sum)  
 
-#returns the max distance between the center point and a list of child points
-def maxDistance(center, pairs):
+#returns the max distance between the pivot and a list of child points
+def maxDistance(pivot, pairs):
 
     radius = 0
 
-    #for each point, if distance from center is greater than max, make it max
+    #for each point, if distance from pivot is greater than max, make it max
     for p in pairs:
         
         #the "point" is the key of the pair
-        dist = distance(p[0],center[0]) 
+        dist = distance(p[0],pivot[0]) 
         if dist > radius: radius = dist
         
     return radius
@@ -143,8 +143,8 @@ class BallTree(object):
             print("DGS:", DGS)
                     
             #choose a central point considering the DGS
-            center = medianOfThree(pairs, DGS)
-            print("center:",center)
+            pivot = medianOfThree(pairs, DGS)
+            print("pivot:",pivot)
          
             #separate the points into left and right
             leftPoints = []
@@ -153,11 +153,11 @@ class BallTree(object):
             #for each point, add to correct pile
             for pair in pairs:
                 
-                #leave out the center point
-                if pair != center:
+                #leave out the pivot
+                if pair != pivot:
                     
-                    #if the value at the DGS is <= center's, add to left
-                    if pair[0][DGS] <= center[0][DGS]: leftPoints += [pair]
+                    #if the value at the DGS is <= pivot's, add to left
+                    if pair[0][DGS] <= pivot[0][DGS]: leftPoints += [pair]
                 
                     #otherwise, add to right
                     else: rightPoints += [pair]
@@ -176,13 +176,13 @@ class BallTree(object):
             else: rightChild = self.__build(rightPoints)
             
             #find the radius = 
-            #the distance from the center to the furthest child point
-            maxLeft = maxDistance(center, leftPoints)
-            maxRight = maxDistance(center, rightPoints)
+            #the distance from the pivot to the furthest child point
+            maxLeft = maxDistance(pivot, leftPoints)
+            maxRight = maxDistance(pivot, rightPoints)
             radius = max(maxLeft, maxRight)
                 
             #create a Node with 2 children
-            n = Node(center, leftChild, rightChild, radius)
+            n = Node(pivot, leftChild, rightChild, radius)
         
         print("Node:", n.key, ",", n.data)
         return n
@@ -190,9 +190,35 @@ class BallTree(object):
     
     #finds the data at this exact key
     #if key does not exist, returns None
-    def findExact(self, key):
+    def findExact(self, key, n='start'):
         
-        return None
+        #start from the root
+        if n=='start': n = self.__root
+        
+        #base case: reached the end
+        if not n: return None
+        
+        #compute distance from pivot point to search point
+        dist = distance(n.key, key)
+        
+        #see if the point is within the radius of this node
+        #if not, it cannot be found
+        if dist > n.radius: return None
+        
+        #otherwise, it may be there
+        #see if it's equal to pivot
+        if key == n.key: return n.data
+        
+        #if not, recurse into children
+        else: 
+            
+            #first check left child
+            ans = self.findExact(key, n.leftChild)
+            if ans: return ans
+            
+            #if not found in left, search right
+            return self.findExact(key, n.rightChild)
+
     
     
     #finds the k nearest neighbors to a specified point
@@ -222,13 +248,19 @@ class BallTree(object):
 class FakeBallTree(object):
     
     #keeps track of all the (key, data) pairs
-    def __init__(self, numDimensions, pairs):
+    def __init__(self, pairs):
         
         self.__pairs = pairs
         
     #finds exact key by brute force- looping through all the keys
     def findExact(self, key):
         
+        for pair in self.__pairs:
+            
+            #if you find the key, return the data
+            if pair[0]==key: return pair[1]
+         
+        #otherwise, return None   
         return None
     
     #finds k nearest neighbors by brute force- 
@@ -244,16 +276,23 @@ def main():
     numDimensions = 3
     numPoints = 10
     pairs = []
-    for i in range(numPoints):
-        key = ()
-        for j in range(numDimensions):
-            key += (random.randint(1,100),)
+    #for i in range(numPoints):
+        #key = ()
+        #for j in range(numDimensions):
+            #key += (random.randint(1,100),)
             
-        pairs += [(key,0)]
+        #pairs += [(key,0)]
         
-    #pairs = [((1,2),0),((4,5),0),((6,7),0),((10,12),0),((11,10),0)]
+    pairs = [((1,2),10),((4,5),32),((6,7),10),((10,12),10),((11,10),10)]
                    
     b = BallTree(pairs)
     b.display()
+    print()
+    print()
+    
+    f = FakeBallTree(pairs)
+    
+    print(b.findExact((1,2)))
+    print(f.findExact((1,2)))
     
 main()
