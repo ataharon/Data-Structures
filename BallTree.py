@@ -1,6 +1,7 @@
 import pytest
 import math
 import random
+import heapq
 
 # Positive and negative infinity
 PINF =  float('inf')
@@ -263,11 +264,33 @@ class FakeBallTree(object):
         #otherwise, return None   
         return None
     
-    #finds k nearest neighbors by brute force- 
-    #looping through all keys and keeping track of top k answers
+    #finds k nearest neighbors by brute force
     def kNearestNeighbor(self, key, k):
         
-        return None
+        #if not enough elements, return them all
+        if k > len(self.__pairs): return self.__pairs
+        
+        ans = []
+        
+        #put all keys in min heap based on distance from search key
+        h = []
+        
+        #loop through all keys and push onto heap
+        for pair in self.__pairs:
+            dist = distance(key, pair[0])
+            heapq.heappush(h,(dist,pair))
+            
+        #pop the k items with the smallest distance and return them as a list
+        for i in range(k):
+            
+            item = heapq.heappop(h)
+            ans += [item[1]] #isolate the pair
+            
+        return ans
+            
+            
+            
+            
         
         
 def main():
@@ -294,5 +317,7 @@ def main():
     
     print(b.findExact((1,2)))
     print(f.findExact((1,2)))
+    
+    print(f.kNearestNeighbor((100,100),3))
     
 main()
