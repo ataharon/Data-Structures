@@ -8,11 +8,22 @@ PINF =  float('inf')
 NINF = -float('inf')
 
 # returns the distance between two points
+#maybe modify to compare diff dimensions?
 def distance(p1, p2):
-    dimensions = len(p1)
-    sum = 0
     
-    #calculate euclidean distance
+    #answer should be in greater number of dimensions
+    dimensions = max(len(p1), len(p2))
+    
+    #fill in the lower dimensional point with 0s
+    if len(p1) < dimensions:
+        for i in range(dimensions-len(p1)): p1 += (0,)
+    
+    else:
+        for i in range(dimensions-len(p2)): p2 += (0,)
+    
+    
+    #calculate Euclidean distance
+    sum = 0
     for i in range(dimensions):
         di = p1[i] - p2[i]
         sum += di**2
@@ -225,9 +236,55 @@ class BallTree(object):
     #finds the k nearest neighbors to a specified point
     #returns a list of the neighbors' (key, data) pairs
     #if fewer than k points exist, return a list of all pairs
-    def kNearestNeighbor(self, key, k):
+    def kNearestNeighbor(self, key, k, n='start', heap=[(NINF,(0,0),0)]):
         
-        return None
+        #start with the root
+        if n == 'start': n = self.__root
+        
+        #initialize max heap as a list of 5 infinities
+        #keep heap values negative to make it a max heap (default is min)
+        #heap = [(NINF,(0,0),0)]
+        #ans = []
+        
+        #base case: reached end
+        if not n: return heap
+        
+        #calculate (and negate) distance from node's key to search key
+        dist = -distance(n.key,key)
+        
+        #if the answer can't be within this circle, don't search any further
+        #the closest possible point would be 
+        #the distance to the pivot - the distance to the radius
+        #if that value is greater than the current max (less since negative), 
+        #it can't be in ans
+        if dist + n.radius < heap[0][0]: return heap
+        
+        #if it can be in the circle, see if the node's key makes it
+        else: 
+            
+            #if the heap isn't full yet, definitely add
+            if len(heap) < k: heapq.heappush(heap,(dist,n.key,n.data))
+            
+            #if the heap is full,
+            #if the distance is less than the max so far (greater if negative)
+            #add it to the heap
+
+            elif dist > heap[0][0]: 
+                heapq.heappush(heap,(dist,n.key,n.data))
+                
+                #remove the max
+                heapq.heappop(heap)
+                #ans = [(i[1][1],i[1][2]) for i in heap]  
+                
+        
+            #recurse into children
+            #decide whether to go into child or not*
+            self.kNearestNeighbor(key, k, n.leftChild, heap)
+            self.kNearestNeighbor(key, k, n.rightChild, heap)
+            
+        return [(i[1],i[2]) for i in heap]
+            
+        
     
     #displays the nodes in the tree
     def display(self, n='start', kind="ROOT:  ", indent=""):
@@ -296,17 +353,17 @@ class FakeBallTree(object):
 def main():
     
     #create the pairs
-    numDimensions = 3
-    numPoints = 10
+    numDimensions = 5
+    numPoints = 100
     pairs = []
-    #for i in range(numPoints):
-        #key = ()
-        #for j in range(numDimensions):
-            #key += (random.randint(1,100),)
+    for i in range(numPoints):
+        key = ()
+        for j in range(numDimensions):
+            key += (random.randint(1,100),)
             
-        #pairs += [(key,0)]
+        pairs += [(key,0)]
         
-    pairs = [((1,2),10),((4,5),32),((6,7),10),((10,12),10),((11,10),10)]
+    #pairs = [((1,2),10),((4,5),32),((6,7),10),((10,12),10),((11,10),10)]
                    
     b = BallTree(pairs)
     b.display()
@@ -315,9 +372,10 @@ def main():
     
     f = FakeBallTree(pairs)
     
-    print(b.findExact((1,2)))
-    print(f.findExact((1,2)))
+    print(b.findExact((1,2,3,4,5)))
+    print(f.findExact((1,2,3,4,5)))
     
-    print(f.kNearestNeighbor((100,100),3))
+    print(b.kNearestNeighbor((52,55),3))
+    print(f.kNearestNeighbor((52,55),3))
     
 main()
