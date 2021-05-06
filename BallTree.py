@@ -9,10 +9,9 @@ PINF =  float('inf')
 NINF = -float('inf')
 
 # returns the distance between two points
-#maybe modify to compare diff dimensions?
 def distance(p1, p2):
     
-    #answer should be in greater number of dimensions
+    #if points are in different dimensions, use greater number of dimensions
     dimensions = max(len(p1), len(p2))
     
     #fill in the lower dimensional point with 0s
@@ -233,53 +232,58 @@ class BallTree(object):
     #finds the k nearest neighbors to a specified point
     #returns a list of the neighbors' (key, data) pairs
     #if fewer than k points exist, return a list of all pairs
+    #if k <= 0, return None
     def kNearestNeighbor(self, key, k, n='start', heap=None):
         
-        #start with the root
-        if n == 'start': 
-            n = self.__root
-            
-            #initialize max heap as infinity
-            #keep heap values negative to make it a max heap (default is min)
-            heap = [(NINF,None,None)]
+        if k > 0:
         
-        #base case: reached end
-        if not n: return heap
-        
-        #calculate (and negate) distance from node's key to search key
-        dist = -distance(n.key,key)
-        
-        #if the answer can't be within this circle, don't search any further
-        #the closest possible point would be 
-        #the distance to the pivot - the distance to the radius
-        #if that value is greater than the current max (less since negative), 
-        #it can't be in ans
-        if dist + n.radius < heap[0][0]: return heap
-        
-        #if it can be in the circle, see if the node's key makes it
-        else: 
-            
-            #if the heap isn't full yet, definitely add
-            if len(heap) < k: heapq.heappush(heap,(dist,n.key,n.data))
-            
-            #if the heap is full,
-            #if the distance is less than the max so far (greater if negative)
-            #add it to the heap
-
-            elif dist > heap[0][0]: 
-                heapq.heappush(heap,(dist,n.key,n.data))
+            #start with the root
+            if n == 'start': 
+                n = self.__root
                 
-                #remove the max
-                heapq.heappop(heap)
+                #initialize max heap as infinity
+                #keep heap values negative to make it a max heap (default is min)
+                heap = [(NINF,None,None)]
+            
+            #base case: reached end
+            if not n: return heap
+            
+            #calculate (and negate) distance from node's key to search key
+            dist = -distance(n.key,key)
+            
+            #if the answer can't be within this circle, don't search any further
+            #the closest possible point would be 
+            #the distance to the pivot - the distance to the radius
+            #if that value is greater than the current max (less since negative), 
+            #it can't be in ans
+            if dist + n.radius < heap[0][0]: return heap
+            
+            #if it can be in the circle, see if the node's key makes it
+            else: 
                 
-        
-            #recurse into children
-            #decide whether to go into child or not*
-            self.kNearestNeighbor(key, k, n.leftChild, heap)
-            self.kNearestNeighbor(key, k, n.rightChild, heap)
-         
-        #isolate the key,data pairs   
-        return [(i[1],i[2]) for i in heap]
+                #if the heap isn't full yet, definitely add
+                if len(heap) < k: heapq.heappush(heap,(dist,n.key,n.data))
+                
+                #if the heap is full,
+                #if the distance is less than the max so far (greater if negative)
+                #add it to the heap
+    
+                elif dist > heap[0][0]: 
+                    heapq.heappush(heap,(dist,n.key,n.data))
+                    
+                    #remove the max
+                    heapq.heappop(heap)
+                    
+            
+                #recurse into children
+                #will decide whether to go further at beginning of function
+                self.kNearestNeighbor(key, k, n.leftChild, heap)
+                self.kNearestNeighbor(key, k, n.rightChild, heap)
+             
+             
+            #isolate the key,data pairs
+            #don't include the None placeholder if it's there (weren't enough points)
+            return [(i[1],i[2]) for i in heap if i[1]]
             
         
     
@@ -321,26 +325,28 @@ class FakeBallTree(object):
     #finds k nearest neighbors by brute force
     def kNearestNeighbor(self, key, k):
         
-        #if not enough elements, return them all
-        if k > len(self.__pairs): return self.__pairs
+        if k > 0:
         
-        ans = []
-        
-        #put all keys in min heap based on distance from search key
-        h = []
-        
-        #loop through all keys and push onto heap
-        for pair in self.__pairs:
-            dist = distance(key, pair[0])
-            heapq.heappush(h,(dist,pair))
+            #if not enough elements, return them all
+            if k > len(self.__pairs): return self.__pairs
             
-        #pop the k items with the smallest distance and return them as a list
-        for i in range(k):
+            ans = []
             
-            item = heapq.heappop(h)
-            ans += [item[1]] #isolate the pair
+            #put all keys in min heap based on distance from search key
+            h = []
             
-        return ans
+            #loop through all keys and push onto heap
+            for pair in self.__pairs:
+                dist = distance(key, pair[0])
+                heapq.heappush(h,(dist,pair))
+                
+            #pop the k items with the smallest distance and return them as a list
+            for i in range(k):
+                
+                item = heapq.heappop(h)
+                ans += [item[1]] #isolate the pair
+                
+            return ans
     
     
 #utility method: makes a list of random points with specified 
@@ -391,24 +397,38 @@ def __main():
     
     #compare run times of real and fake BT
     
-    pairs = makePairs(10000000,3)
+    pairs = makePairs(100000,5)
     
+    start = time.time()
     b = BallTree(pairs)
+    end = time.time()
+    print("build time:", end-start)
     f = FakeBallTree(pairs)
     
     start = time.time()
     b.findExact((1,2,3))
     end = time.time()
-    print("real run time:", end-start)
+    print("real search time:", end-start)
     
     start = time.time()
     f.findExact((1,2,3))
     end = time.time()
-    print("fake run time:", end-start)    
+    print("fake search time:", end-start)    
+    
+    start = time.time()
+    b.kNearestNeighbor((.1,.4,.2,.3,.4),10)
+    end = time.time()
+    print("real KNN time:", end-start)
+    
+    start = time.time()
+    f.kNearestNeighbor((.1,.4,.2,.3,.4),10)
+    end = time.time()
+    print("fake KNN time:", end-start)    
     
     
-if __name__ == '__main__':
-    __main() 
+    
+#if __name__ == '__main__':
+    #__main() 
     
 #PYTESTS
 
@@ -473,10 +493,41 @@ def test_findMedium():
             for pair in pairs:
                 assert b.findExact(pair[0]) == f.findExact(pair[0]) == pair[1]
                 
-#sizes from 1000-5000
+#size from 1000-10000 (only choose one size for the sake of time)
 def test_findLarge():
     
-    for size in range(1000,5000,1000):
+    size = random.randint(1000,10000)
+        
+    #1-6 dimensions
+    for d in range(1,7):
+        
+        pairs = makePairs(size, d)
+        b = BallTree(pairs)
+        f = FakeBallTree(pairs)
+        
+        #loop through each key and see if it can be found
+        for pair in pairs:
+            assert b.findExact(pair[0]) == f.findExact(pair[0]) == pair[1]
+                
+#create very large tree
+def test_findVeryLarge():
+    
+    size = 100000
+    d = 3
+    
+    pairs = makePairs(size, d)
+    b = BallTree(pairs)
+    
+    #search for 5 random keys
+    for i in range(5):
+        pair = random.choice(pairs)
+        assert b.findExact(pair[0]) == pair[1] 
+        
+#search for a key that will definitely not be found
+def test_notFound():
+    
+    #sizes from 10-100
+    for size in range(10, 110, 10):
         
         #1-6 dimensions
         for d in range(1,7):
@@ -485,34 +536,15 @@ def test_findLarge():
             b = BallTree(pairs)
             f = FakeBallTree(pairs)
             
-            #loop through each key and see if it can be found
-            for pair in pairs:
-                assert b.findExact(pair[0]) == f.findExact(pair[0]) == pair[1]
-                
-#create very large trees but only search for a few keys (for the sake of time)
-def test_findVeryLarge():
-    
-    for exp in range(6,7):
-        size = 10**exp
-        
-        for d in range(1,3):
-            pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
-            
-            #search for 5 random keys
-            for i in range(5):
-                pair = random.choice(pairs)
-                assert b.findExact(pair[0]) == pair[1]        
-                
+            #look for a key that is not there
+            assert b.findExact((1.1,1.2,1.3)) == f.findExact((1.1,1.2,1.3)) == None
+         
                 
 #tests for k nearest neighbor
 
 #simplest: 1 point, 1 neighbor, 1D
 def test_KNNsimple():
-    key = (random.random(),)
-    data = random.random()
-    pairs = [(key, data)]
+    pairs = makePairs(1, 1)
     b = BallTree(pairs)
     f = FakeBallTree(pairs)
     searchKey = (random.random(),)
@@ -520,16 +552,138 @@ def test_KNNsimple():
     
 #1 pt, 1 neighbor, multiple dimensions
 def test_KNNMultD():
-    for i in range(2,7):
-        key = ()
-        for j in range(i): key += (random.random(),)
-        data = random.random()
-        pairs = [(key, data)]
+    for d in range(2,7):
+        pairs = makePairs(1, d)
         b = BallTree(pairs)
         f = FakeBallTree(pairs)    
         searchKey = ()
-        for j in range(i): searchKey += (random.random(),)
-        assert b.kNearestNeighbor(searchKey, 1) == f.kNearestNeighbor(searchKey, 1)        
+        for j in range(d): searchKey += (random.random(),)
+        assert b.kNearestNeighbor(searchKey, 1) == f.kNearestNeighbor(searchKey, 1)
+        
+#k=1
+def test_KNN1neighbor():
     
+    #medium sized trees
+    for size in range(10, 110, 10):
+        
+        #1-6 dimensions
+        for d in range(1,7):
+            
+            pairs = makePairs(size, d)
+            b = BallTree(pairs)
+            f = FakeBallTree(pairs)
+            
+            #search for 1 nearest neighbor
+            searchKey = ()
+            for j in range(d): searchKey += (random.random(),)
+            assert b.kNearestNeighbor(searchKey, 1) == f.kNearestNeighbor(searchKey, 1)   
+            
+#small k
+def test_KNNfew():
+    
+    #medium sized trees
+    for size in range(20, 110, 10):
+        
+        #1-6 dimensions
+        for d in range(1,7):
+            
+            pairs = makePairs(size, d)
+            b = BallTree(pairs)
+            f = FakeBallTree(pairs)
+            
+            #search for 2-20 nearest neighbors
+            for k in range(2, 21):
+                searchKey = ()
+                for j in range(d): searchKey += (random.random(),)
+                ans1 = b.kNearestNeighbor(searchKey, k)
+                ans2 = f.kNearestNeighbor(searchKey, k)
+                ans1.sort()
+                ans2.sort()
+                assert ans1 == ans2
+                
+#large k
+def test_KNNmany():
+    
+    size = 1000
+        
+    #3-5 dimensions
+    for d in range(3,6):
+        
+        pairs = makePairs(size, d)
+        b = BallTree(pairs)
+        f = FakeBallTree(pairs)
+        
+        #search for 100-1000 nearest neighbors
+        for k in range(100, 1000, 9):
+            searchKey = ()
+            for j in range(d): searchKey += (random.random(),)
+            ans1 = b.kNearestNeighbor(searchKey, k)
+            ans2 = f.kNearestNeighbor(searchKey, k)
+            ans1.sort()
+            ans2.sort()
+            assert ans1 == ans2 
+            
+#k > size
+def test_KNNtooMany():
+    
+    size = 20
+    d = 3
+    
+    pairs = makePairs(size, d)
+    b = BallTree(pairs)
+    f = FakeBallTree(pairs)
+    
+    #search for 25-30 nearest neighbors
+    for k in range(25, 31):
+        searchKey = ()
+        for j in range(d): searchKey += (random.random(),)
+        ans1 = b.kNearestNeighbor(searchKey, k)
+        ans2 = f.kNearestNeighbor(searchKey, k)
+        ans1.sort()
+        ans2.sort()
+        assert ans1 == ans2 
+        
+#search for 0 neighbors
+def test_KNNnone():
+    
+    size = 20
+    d = 3
+    
+    pairs = makePairs(size, d)
+    b = BallTree(pairs)
+    f = FakeBallTree(pairs)
+    
+    #search for 0 nearest neighbors
+    searchKey = ()
+    for j in range(d): searchKey += (random.random(),)
+    ans1 = b.kNearestNeighbor(searchKey, 0)
+    ans2 = f.kNearestNeighbor(searchKey, 0)
+    assert ans1 == ans2 == None
+        
+def test_torture():
+    
+    #10 trees of random size and d
+    for i in range(10):
+        size = random.randint(1,1000)
+        d = random.randint(1,7)
+        pairs = makePairs(size, d)
+        b = BallTree(pairs)
+        f = FakeBallTree(pairs)
+        
+        #search for 5 random keys
+        for i in range(5):
+            pair = random.choice(pairs)
+            assert b.findExact(pair[0]) == f.findExact(pair[0]) == pair[1]  
+            
+        #search for knn
+        k = random.randint(1,100)
+        searchKey = ()
+        for j in range(d): searchKey += (random.random(),)
+        ans1 = b.kNearestNeighbor(searchKey, k)
+        ans2 = f.kNearestNeighbor(searchKey, k)
+        ans1.sort()
+        ans2.sort()
+        assert ans1 == ans2         
 
-#pytest.main(["-v", "-s", "BallTree.py"]) 
+
+pytest.main(["-v", "-s", "BallTree.py"]) 
