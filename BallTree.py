@@ -19,7 +19,6 @@ import pytest
 import math
 import random
 import heapq
-import time
 
 # Positive and negative infinity
 PINF =  float('inf')
@@ -60,7 +59,7 @@ def maxDistance(pivot, pairs):
     return radius
 
 
-#returns the median point based on the dimension of greatest spread
+#returns a median point based on the dimension of greatest spread
 def medianOfThree(points, DGS):
     
     #choose 3 random points in the list
