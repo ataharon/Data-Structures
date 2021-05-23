@@ -1,3 +1,20 @@
+#Alyssa (Ayelet) Aharon
+
+#I hereby certify that this program is solely the result of 
+#my own work and is in compliance with the Academic Integrity 
+#policy of the course syllabus and the academic integrity policy 
+#of the CS department.
+
+#The following is an original implementation of a ball tree.
+#A ball tree is a data structure that stores points in multi-dimensional space
+#by dividing them into hyperspheres ("balls").
+#The client can create a ball tree with any number of dimensions
+#by passing in a list of (key, data) pairs, the keys being
+#points in the number of dimensions of the tree.
+#The client can invoke the findExact() method to find the data
+#of a given key, or the kNearestNeighbor() method to find
+#the k nearest neighbors to a given point.
+
 import pytest
 import math
 import random
@@ -42,47 +59,8 @@ def maxDistance(pivot, pairs):
         
     return radius
 
-#returns the dimension of greatest spread
-def findDGS(pairs):
-    DGS = 0
-    
-    #the number of dimensions is the length of any key
-    numDimensions = len(pairs[0][0])
-    
-    #in each dimension, find the least and greatest value
-    #keep track of maxs and mins in a list the length of numDimensions
-    maxs = [NINF] * numDimensions
-    mins = [PINF] * numDimensions
-    
-    #for each key, see if its value in any dimension is the max or min
-    for pair in pairs:
-        key = pair[0]
-        for i in range(numDimensions):
-            
-            #if value of a dimension is greater than max, make it the max
-            if key[i] > maxs[i]: maxs[i] = key[i]
-            
-            #do the same for mins
-            if key[i] < mins[i]: mins[i] = key[i]
-            
-    #now the maxs and mins should be full of the max and min values
-    #at each dimension
-    #compare the difference between max and min at each dimension
-    #to find the DGS
-            
-    maxSpread = 0
-    
-    #for each dimension, if the spread is greater than the max spread,
-    #make it the DGS
-    for i in range(numDimensions):
-        if maxs[i] - mins[i] > maxSpread:
-            maxSpread = maxs[i] - mins[i]
-            DGS = i    
-    
-    return DGS
 
-#returns the median point based on the DGS
-#(consider changing to median of 5 or 7)
+#returns the median point based on the dimension of greatest spread
 def medianOfThree(points, DGS):
     
     #choose 3 random points in the list
@@ -114,7 +92,8 @@ def medianOfThree(points, DGS):
 
 class Node(object):
     
-    #a Node stores one pair and has a left and right child
+    #a Node stores one (key, data) pair and has a left and right child
+    #a leaf node has a radius of 0
     def __init__(self, pair, leftChild=None, rightChild=None, radius=0):
         self.key = pair[0]
         self.data = pair[1]
@@ -125,13 +104,14 @@ class Node(object):
 
 class BallTree(object):
 
-    #builds a ball tree given a list of (key, data) pairs
-    def __init__(self, pairs):
+    #builds a ball tree given a number of dimensions 
+    #and a list of (key, data) pairs
+    def __init__(self, numDimensions, pairs):
+        
+        self.__numDimensions = numDimensions
         
         #build a ball tree with the list of all pairs and store it as the root
         self.__root = self.__build(pairs)
-        
-        
         
     #builds a ball tree and returns the root node 
     def __build(self, pairs):
@@ -143,16 +123,12 @@ class BallTree(object):
             n = Node(pairs[0])
         
         #more than one pair:
-        #elif pairs and len(pairs) > 1:
         else:
             #find the dimension of greatest spread (DGS)
-            DGS = findDGS(pairs)
-            #print("pairs:",pairs)
-            #print("DGS:", DGS)
+            DGS = self.__findDGS(pairs)
                     
             #choose a central point considering the DGS
             pivot = medianOfThree(pairs, DGS)
-            #print("pivot:",pivot)
          
             #separate the points into left and right
             leftPoints = []
@@ -161,8 +137,9 @@ class BallTree(object):
             #for each point, add to correct pile
             for pair in pairs:
                 
-                #leave out the pivot
-                if pair != pivot:
+                #leave out the pivot 
+                #(and any point equivalent to pivot- to avoid duplicates)
+                if pair[0] != pivot[0]:
                     
                     #if the value at the DGS is <= pivot's, add to left
                     if pair[0][DGS] <= pivot[0][DGS]: leftPoints += [pair]
@@ -170,8 +147,6 @@ class BallTree(object):
                     #otherwise, add to right
                     else: rightPoints += [pair]
                 
-            #print("left points:", leftPoints)
-            #print("right points:", rightPoints)
                 
             #if there are no points in left child, set it to None
             if len(leftPoints) == 0: leftChild = None
@@ -192,8 +167,43 @@ class BallTree(object):
             #create a Node with 2 children
             n = Node(pivot, leftChild, rightChild, radius)
         
-        #print("Node:", n.key, ",", n.data)
         return n
+    
+    #returns the dimension of greatest spread
+    def __findDGS(self, pairs):
+        DGS = 0
+        
+        #in each dimension, find the least and greatest value
+        #keep track of maxs and mins in a list the length of numDimensions
+        maxs = [NINF] * self.__numDimensions
+        mins = [PINF] * self.__numDimensions
+        
+        #for each key, see if its value in any dimension is the max or min
+        for pair in pairs:
+            key = pair[0]
+            for i in range(self.__numDimensions):
+                
+                #if value of a dimension is greater than max, make it the max
+                if key[i] > maxs[i]: maxs[i] = key[i]
+                
+                #do the same for mins
+                if key[i] < mins[i]: mins[i] = key[i]
+                
+        #now the maxs and mins should be full of the max and min values
+        #at each dimension
+        #compare the difference between max and min at each dimension
+        #to find the DGS
+                
+        maxSpread = 0
+        
+        #for each dimension, if the spread is greater than the max spread,
+        #make it the DGS
+        for i in range(self.__numDimensions):
+            if maxs[i] - mins[i] > maxSpread:
+                maxSpread = maxs[i] - mins[i]
+                DGS = i    
+        
+        return DGS    
     
     
     #finds the data at this exact key
@@ -229,10 +239,10 @@ class BallTree(object):
 
     
     
-    #finds the k nearest neighbors to a specified point
-    #returns a list of the neighbors' (key, data) pairs
-    #if fewer than k points exist, return a list of all pairs
-    #if k <= 0, return None
+    #finds the k nearest neighbors to a specified point;
+    #returns a list of the neighbors' (key, data) pairs;
+    #if fewer than k points exist, returns a list of all pairs;
+    #if k <= 0, returns None
     def kNearestNeighbor(self, key, k, n='start', heap=None):
         
         if k > 0:
@@ -241,52 +251,54 @@ class BallTree(object):
             if n == 'start': 
                 n = self.__root
                 
+                #max heap stores (distance, key, data) of best points so far
                 #initialize max heap as infinity
                 #keep heap values negative to make it a max heap (default is min)
                 heap = [(NINF,None,None)]
-            
+           
             #base case: reached end
             if not n: return heap
+       
+            #calculate distance from node's key to search key
+            dist = distance(n.key,key)
             
-            #calculate (and negate) distance from node's key to search key
-            dist = -distance(n.key,key)
-            
-            #if the answer can't be within this circle, don't search any further
-            #the closest possible point would be 
-            #the distance to the pivot - the distance to the radius
-            #if that value is greater than the current max (less since negative), 
-            #it can't be in ans
-            if dist + n.radius < heap[0][0]: return heap
+            #If the answer can't be within this circle, don't search any further.
+            #The closest possible point would be 
+            #the distance to the pivot - the length of the radius.
+            #If that value is greater than the current max, 
+            #it can't be in ans.
+            #Negate negative value from heap to make it positive for comparison
+            if dist - n.radius >= -heap[0][0]: return heap
             
             #if it can be in the circle, see if the node's key makes it
             else: 
                 
-                #if the heap isn't full yet, definitely add
-                if len(heap) < k: heapq.heappush(heap,(dist,n.key,n.data))
+                #if the heap isn't full yet, definitely add.
+                #Negate distance to maintain max heap
+                if len(heap) < k: 
+                    heapq.heappush(heap,(-dist,n.key,n.data))
                 
                 #if the heap is full,
-                #if the distance is less than the max so far (greater if negative)
+                #if the distance is less than the max so far,
                 #add it to the heap
     
-                elif dist > heap[0][0]: 
-                    heapq.heappush(heap,(dist,n.key,n.data))
+                elif dist < -heap[0][0]: 
+                    heapq.heappush(heap,(-dist,n.key,n.data))
                     
                     #remove the max
                     heapq.heappop(heap)
                     
-            
                 #recurse into children
-                #will decide whether to go further at beginning of function
+                #(will decide whether to proceed at beginning of function)
                 self.kNearestNeighbor(key, k, n.leftChild, heap)
                 self.kNearestNeighbor(key, k, n.rightChild, heap)
-             
+
              
             #isolate the key,data pairs
             #don't include the None placeholder if it's there (weren't enough points)
             return [(i[1],i[2]) for i in heap if i[1]]
-            
-        
-    
+   
+
     #displays the nodes in the tree
     def display(self, n='start', kind="ROOT:  ", indent=""):
 
@@ -303,11 +315,11 @@ class BallTree(object):
                 self.display(n.rightChild, "RIGHT:  ", indent + "    ")            
             
     
-    
+#brute force methods for testing
 class FakeBallTree(object):
     
     #keeps track of all the (key, data) pairs
-    def __init__(self, pairs):
+    def __init__(self, numDimensions, pairs):
         
         self.__pairs = pairs
         
@@ -365,66 +377,37 @@ def makePairs(size, d):
     return pairs
             
             
-                   
-        
+#informal testing                   
 def __main():
     
-    ##create the pairs
-    #numDimensions = 5
-    #numPoints = 100
-    #pairs = []
-    #for i in range(numPoints):
-        #key = ()
-        #for j in range(numDimensions):
-            #key += (random.randint(1,100),)
+    #create the pairs
+    numDimensions = 2
+    size = 20
+    pairs = []
+    for i in range(size):
+        key = ()
+        for j in range(numDimensions):
+            key += (random.randint(1,100),)
             
-        #pairs += [(key,0)]
+        pairs += [(key,0)]    
+    
         
-    ##pairs = [((1,2),10),((4,5),32),((6,7),10),((10,12),10),((11,10),10)]
+    #known pair for searching:
+    pairs += [((1,2),10)]
                    
-    #b = BallTree(pairs)
-    #b.display()
-    #print()
-    #print()
+    b = BallTree(numDimensions, pairs)
+    b.display()
+    print()
+    print()
     
-    #f = FakeBallTree(pairs)
+    f = FakeBallTree(numDimensions, pairs)
     
-    #print(b.findExact((1,2,3,4,5)))
-    #print(f.findExact((1,2,3,4,5)))
+    print(b.findExact((1,2)))
+    print(f.findExact((1,2)))
     
-    #print(b.kNearestNeighbor((52,55,6,7),3))
-    #print(f.kNearestNeighbor((52,55,4,5),3))
-    
-    #compare run times of real and fake BT
-    
-    pairs = makePairs(100000,5)
-    
-    start = time.time()
-    b = BallTree(pairs)
-    end = time.time()
-    print("build time:", end-start)
-    f = FakeBallTree(pairs)
-    
-    start = time.time()
-    b.findExact((1,2,3))
-    end = time.time()
-    print("real search time:", end-start)
-    
-    start = time.time()
-    f.findExact((1,2,3))
-    end = time.time()
-    print("fake search time:", end-start)    
-    
-    start = time.time()
-    b.kNearestNeighbor((.1,.4,.2,.3,.4),10)
-    end = time.time()
-    print("real KNN time:", end-start)
-    
-    start = time.time()
-    f.kNearestNeighbor((.1,.4,.2,.3,.4),10)
-    end = time.time()
-    print("fake KNN time:", end-start)    
-    
+    print(b.kNearestNeighbor((45,60),3))
+    print(f.kNearestNeighbor((45,60),3))
+
     
     
 #if __name__ == '__main__':
@@ -438,15 +421,15 @@ def __main():
 #tree with one pair in 1D
 def test_findOne1D():
     pairs = makePairs(1, 1)
-    b = BallTree(pairs)
-    f = FakeBallTree(pairs)
+    b = BallTree(1, pairs)
+    f = FakeBallTree(1, pairs)
     assert b.findExact(pairs[0][0]) == f.findExact(pairs[0][0]) == pairs[0][1]
     
 #tree with one pair in 2D
 def test_findOne2D():
     pairs = makePairs(1, 2)
-    b = BallTree(pairs)
-    f = FakeBallTree(pairs)
+    b = BallTree(2, pairs)
+    f = FakeBallTree(2, pairs)
     assert b.findExact(pairs[0][0]) == f.findExact(pairs[0][0]) == pairs[0][1]
     
 #tree with one pair in 3+ D
@@ -454,8 +437,8 @@ def test_findOneMultD():
     #3-6 dimensions
     for d in range(3,7):
         pairs = makePairs(1, d)
-        b = BallTree(pairs)
-        f = FakeBallTree(pairs)
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)
         assert b.findExact(pairs[0][0]) == f.findExact(pairs[0][0]) == pairs[0][1]
         
 #small trees
@@ -468,8 +451,8 @@ def test_findSmall():
         for d in range(1,7):
             
             pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
+            b = BallTree(d, pairs)
+            f = FakeBallTree(d, pairs)
             
             #loop through each key and see if it can be found
             for pair in pairs:
@@ -486,8 +469,8 @@ def test_findMedium():
         for d in range(1,7):
             
             pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
+            b = BallTree(d, pairs)
+            f = FakeBallTree(d, pairs)
             
             #loop through each key and see if it can be found
             for pair in pairs:
@@ -502,8 +485,8 @@ def test_findLarge():
     for d in range(1,7):
         
         pairs = makePairs(size, d)
-        b = BallTree(pairs)
-        f = FakeBallTree(pairs)
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)
         
         #loop through each key and see if it can be found
         for pair in pairs:
@@ -516,12 +499,28 @@ def test_findVeryLarge():
     d = 3
     
     pairs = makePairs(size, d)
-    b = BallTree(pairs)
+    b = BallTree(d, pairs)
     
     #search for 5 random keys
     for i in range(5):
         pair = random.choice(pairs)
         assert b.findExact(pair[0]) == pair[1] 
+        
+#create trees with many dimensions
+def test_findManyDimensions():
+    size = 100
+    
+    #10-50 dimensions
+    for d in range(10,50,5):
+        
+        pairs = makePairs(size, d)
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)
+    
+        #search for 5 random keys
+        for i in range(5):
+            pair = random.choice(pairs)
+            assert b.findExact(pair[0]) == pair[1]    
         
 #search for a key that will definitely not be found
 def test_notFound():
@@ -533,8 +532,8 @@ def test_notFound():
         for d in range(1,7):
             
             pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
+            b = BallTree(d, pairs)
+            f = FakeBallTree(d, pairs)
             
             #look for a key that is not there
             assert b.findExact((1.1,1.2,1.3)) == f.findExact((1.1,1.2,1.3)) == None
@@ -545,8 +544,8 @@ def test_notFound():
 #simplest: 1 point, 1 neighbor, 1D
 def test_KNNsimple():
     pairs = makePairs(1, 1)
-    b = BallTree(pairs)
-    f = FakeBallTree(pairs)
+    b = BallTree(1, pairs)
+    f = FakeBallTree(1, pairs)
     searchKey = (random.random(),)
     assert b.kNearestNeighbor(searchKey, 1) == f.kNearestNeighbor(searchKey, 1)
     
@@ -554,8 +553,8 @@ def test_KNNsimple():
 def test_KNNMultD():
     for d in range(2,7):
         pairs = makePairs(1, d)
-        b = BallTree(pairs)
-        f = FakeBallTree(pairs)    
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)    
         searchKey = ()
         for j in range(d): searchKey += (random.random(),)
         assert b.kNearestNeighbor(searchKey, 1) == f.kNearestNeighbor(searchKey, 1)
@@ -570,8 +569,8 @@ def test_KNN1neighbor():
         for d in range(1,7):
             
             pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
+            b = BallTree(d, pairs)
+            f = FakeBallTree(d, pairs)
             
             #search for 1 nearest neighbor
             searchKey = ()
@@ -588,8 +587,8 @@ def test_KNNfew():
         for d in range(1,7):
             
             pairs = makePairs(size, d)
-            b = BallTree(pairs)
-            f = FakeBallTree(pairs)
+            b = BallTree(d, pairs)
+            f = FakeBallTree(d, pairs)
             
             #search for 2-20 nearest neighbors
             for k in range(2, 21):
@@ -610,8 +609,8 @@ def test_KNNmany():
     for d in range(3,6):
         
         pairs = makePairs(size, d)
-        b = BallTree(pairs)
-        f = FakeBallTree(pairs)
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)
         
         #search for 100-1000 nearest neighbors
         for k in range(100, 1000, 9):
@@ -630,8 +629,8 @@ def test_KNNtooMany():
     d = 3
     
     pairs = makePairs(size, d)
-    b = BallTree(pairs)
-    f = FakeBallTree(pairs)
+    b = BallTree(d, pairs)
+    f = FakeBallTree(d, pairs)
     
     #search for 25-30 nearest neighbors
     for k in range(25, 31):
@@ -650,8 +649,8 @@ def test_KNNnone():
     d = 3
     
     pairs = makePairs(size, d)
-    b = BallTree(pairs)
-    f = FakeBallTree(pairs)
+    b = BallTree(d, pairs)
+    f = FakeBallTree(d, pairs)
     
     #search for 0 nearest neighbors
     searchKey = ()
@@ -667,8 +666,8 @@ def test_torture():
         size = random.randint(1,1000)
         d = random.randint(1,7)
         pairs = makePairs(size, d)
-        b = BallTree(pairs)
-        f = FakeBallTree(pairs)
+        b = BallTree(d, pairs)
+        f = FakeBallTree(d, pairs)
         
         #search for 5 random keys
         for i in range(5):
